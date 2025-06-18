@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, fontFamily } from '../../constants/theme';
+import { API_ENDPOINTS, apiRequest } from '../../constants/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
@@ -10,21 +12,34 @@ export default function RegisterScreen() {
   const router = useRouter();
 
   const handleRegister = async () => {
+    if (!email.trim() || !password.trim() || !nickname.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
+
     try {
-      const res = await fetch('http://localhost:5000/api/auth/register', {
+      const data = await apiRequest(API_ENDPOINTS.AUTH.REGISTER, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, nickname }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          nickname: nickname.trim()
+        }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        Alert.alert('Registration successful');
-        // Save token, navigate, etc.
-      } else {
-        Alert.alert('Registration failed', data.error || 'Unknown error');
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Could not connect to server');
+
+      // Save token and navigate
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+
+      Alert.alert('Success', 'Registration successful');
+      router.replace('/');
+    } catch (error: any) {
+      Alert.alert('Registration Failed', error.message || 'Could not connect to server');
     }
   };
 

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, fontFamily } from '../../constants/theme';
+import { API_ENDPOINTS, apiRequest } from '../../constants/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -9,21 +11,25 @@ export default function LoginScreen() {
   const router = useRouter();
 
   const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const data = await apiRequest(API_ENDPOINTS.AUTH.LOGIN, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        Alert.alert('Login successful');
-        // Save token, navigate, etc.
-      } else {
-        Alert.alert('Login failed', data.error || 'Unknown error');
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Could not connect to server');
+
+      // Save token and navigate
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+
+      Alert.alert('Success', 'Login successful');
+      router.replace('/');
+    } catch (error: any) {
+      Alert.alert('Login Failed', error.message || 'Could not connect to server');
     }
   };
 

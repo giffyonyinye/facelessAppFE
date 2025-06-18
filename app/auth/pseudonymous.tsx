@@ -2,27 +2,33 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, fontFamily } from '../../constants/theme';
+import { API_ENDPOINTS, apiRequest } from '../../constants/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function PseudonymousScreen() {
   const [nickname, setNickname] = useState('');
   const router = useRouter();
 
   const handleContinue = async () => {
+    if (!nickname.trim()) {
+      Alert.alert('Error', 'Please enter a nickname');
+      return;
+    }
+
     try {
-      const res = await fetch('http://localhost:5000/api/auth/pseudonymous', {
+      const data = await apiRequest(API_ENDPOINTS.AUTH.PSEUDONYMOUS, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname }),
+        body: JSON.stringify({ nickname: nickname.trim() }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        Alert.alert('Welcome, guest!');
-        // Save token, navigate, etc.
-      } else {
-        Alert.alert('Failed', data.error || 'Unknown error');
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Could not connect to server');
+
+      // Save token and navigate
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('nickname', data.nickname);
+
+      Alert.alert('Success', 'Welcome, guest!');
+      router.replace('/');
+    } catch (error: any) {
+      Alert.alert('Failed', error.message || 'Could not connect to server');
     }
   };
 
